@@ -1,0 +1,21 @@
+# シークレット・認証情報（絶対にGitHubにプッシュしない）
+.streamlit/secrets.toml
+.env
+
+# 個人データを含むCSV（Googleスプレッドシートに移行済み）
+database.csv
+members.csv
+drivers.csv
+collection_status.csv
+transportation_balance.csv
+transportation.csv
+transportation_collection.csv
+
+# Python
+*.pyc
+__pycache__/
+
+# OS
+.DS_Store
+Thumbs.db
+
