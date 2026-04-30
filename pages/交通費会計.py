@@ -110,7 +110,15 @@ driver_pay_df = st.session_state.tc_driver_pay
 collection_df = st.session_state.tc_collection
 
 # KPI計算
-current_balance = int(balance_df['残高'].iloc[-1]) if len(balance_df) > 0 else 0
+# 財布別の残高計算
+def calc_wallet_balance(df, wallet_name):
+    w = df[df['財布'] == wallet_name] if len(df) > 0 and '財布' in df.columns else pd.DataFrame()
+    return int(w['残高'].iloc[-1]) if len(w) > 0 else 0
+
+cash_balance = calc_wallet_balance(balance_df, '現金')
+paypay_balance = calc_wallet_balance(balance_df, 'PayPay')
+total_balance = cash_balance + paypay_balance
+
 total_income = int(balance_df['収入'].sum()) if len(balance_df) > 0 else 0
 total_expense = int(balance_df['支出'].sum()) if len(balance_df) > 0 else 0
 
@@ -124,16 +132,18 @@ if len(collection_df) > 0 and len(event_cols) > 0:
         collection_df[c] = pd.to_numeric(collection_df[c], errors='coerce').fillna(0)
     member_owed = int(collection_df[event_cols].sum().sum())
 
-# KPI表示
-k1, k2, k3, k4 = st.columns(4)
+# KPI表示（5列）
+k1, k2, k3, k4, k5 = st.columns(5)
 with k1:
-    st.markdown(f'<div class="kpi-main"><div class="kpi-label">💰 交通費財布 残高</div><div class="kpi-value">¥{current_balance:,}</div></div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="kpi-main"><div class="kpi-label">💰 合計残高</div><div class="kpi-value">¥{total_balance:,}</div></div>', unsafe_allow_html=True)
 with k2:
-    st.markdown(f'<div class="kpi-sub"><div class="kpi-label">🚗 ドライバー未返済</div><div class="kpi-value">¥{driver_owed:,}</div></div>', unsafe_allow_html=True)
+    st.markdown(f"""<div class="kpi-sub"><div class="kpi-label">💵 現金</div><div class="kpi-value">¥{cash_balance:,}</div></div>""", unsafe_allow_html=True)
 with k3:
-    st.markdown(f'<div class="kpi-sub"><div class="kpi-label">👥 部員未徴収</div><div class="kpi-value">¥{member_owed:,}</div></div>', unsafe_allow_html=True)
+    st.markdown(f"""<div class="kpi-sub"><div class="kpi-label">📱 PayPay</div><div class="kpi-value">¥{paypay_balance:,}</div></div>""", unsafe_allow_html=True)
 with k4:
-    st.markdown(f'<div class="kpi-sub"><div class="kpi-label">📊 収支差額</div><div class="kpi-value">¥{total_income - total_expense:,}</div></div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="kpi-sub"><div class="kpi-label">🚗 ドライバー未返済</div><div class="kpi-value">¥{driver_owed:,}</div></div>', unsafe_allow_html=True)
+with k5:
+    st.markdown(f'<div class="kpi-sub"><div class="kpi-label">👥 部員未徴収</div><div class="kpi-value">¥{member_owed:,}</div></div>', unsafe_allow_html=True)
 
 st.markdown("<br>", unsafe_allow_html=True)
 
@@ -153,10 +163,20 @@ with tab1:
         st.markdown('<p class="section-title">📒 交通費 収支台帳</p>', unsafe_allow_html=True)
 
         if len(balance_df) > 0:
+            # フィルタ
+            filter_wallet = st.radio("表示する財布", ["すべて", "💵 現金", "📱 PayPay"], horizontal=True, key="filter_wallet")
             disp_bal = balance_df.copy()
+            if filter_wallet == "💵 現金":
+                disp_bal = disp_bal[disp_bal['財布'] == '現金']
+            elif filter_wallet == "📱 PayPay":
+                disp_bal = disp_bal[disp_bal['財布'] == 'PayPay']
+            disp_bal = disp_bal.reset_index(drop=True)
+
             disp_bal['収入'] = disp_bal['収入'].astype(int)
             disp_bal['支出'] = disp_bal['支出'].astype(int)
             disp_bal['残高'] = disp_bal['残高'].astype(int)
+
+            wallet_options = ['現金', 'PayPay']
 
             if IS_ADMIN:
                 edited_bal = st.data_editor(
@@ -164,6 +184,7 @@ with tab1:
                     column_config={
                         "日付": st.column_config.TextColumn("📅 日付", width="small"),
                         "項目": st.column_config.TextColumn("📝 項目", width="large"),
+                        "財布": st.column_config.SelectboxColumn("💳 財布", options=wallet_options, width="small"),
                         "収入": st.column_config.NumberColumn("📈 収入", format="¥%d", width="small"),
                         "支出": st.column_config.NumberColumn("📉 支出", format="¥%d", width="small"),
                         "残高": st.column_config.NumberColumn("💰 残高", format="¥%d", width="small", disabled=True),
@@ -174,6 +195,7 @@ with tab1:
                 with bc1:
                     if st.button("💾 台帳を保存", type="primary", use_container_width=True, key="save_bal"):
                         save_transport_balance(edited_bal)
+                        del st.session_state['tc_balance']
                         st.success("✅ 保存しました")
                         st.rerun()
                 with bc2:
@@ -183,6 +205,7 @@ with tab1:
             else:
                 st.dataframe(disp_bal, use_container_width=True, hide_index=True, height=420,
                     column_config={
+                        "財布": st.column_config.TextColumn("💳 財布"),
                         "収入": st.column_config.NumberColumn("📈 収入", format="¥%d"),
                         "支出": st.column_config.NumberColumn("📉 支出", format="¥%d"),
                         "残高": st.column_config.NumberColumn("💰 残高", format="¥%d"),
@@ -192,23 +215,24 @@ with tab1:
         st.markdown('</div>', unsafe_allow_html=True)
 
     with col_right:
+        # 記帳フォーム
         st.markdown('<div class="card">', unsafe_allow_html=True)
         st.markdown('<p class="section-title">➕ 新規記帳</p>', unsafe_allow_html=True)
 
         if IS_ADMIN:
             entry_date = st.date_input("📅 日付", datetime.now(), key="bal_date")
+            entry_wallet = st.selectbox("💳 財布", ["現金", "PayPay"], key="bal_wallet")
             entry_item = st.text_input("📝 項目", placeholder="例: 10月遠征 徴収完了", key="bal_item")
             entry_type = st.radio("種別", ["収入", "支出"], horizontal=True, key="bal_type")
             entry_amount = st.number_input("💴 金額", min_value=0, value=0, step=100, key="bal_amount")
-            entry_note = st.text_input("📎 備考", placeholder="任意", key="bal_note")
 
             if st.button("✅ 記帳する", type="primary", use_container_width=True, key="add_bal"):
                 if entry_amount > 0 and entry_item:
-                    item_text = f"{entry_item} ({entry_note})" if entry_note else entry_item
                     inc = entry_amount if entry_type == "収入" else 0
                     exp = entry_amount if entry_type == "支出" else 0
-                    add_transport_balance_entry(entry_date.strftime('%Y-%m-%d'), item_text, inc, exp)
-                    st.success(f"✅ ¥{entry_amount:,} を記帳しました")
+                    add_transport_balance_entry(entry_date.strftime('%Y-%m-%d'), entry_item, inc, exp, entry_wallet)
+                    del st.session_state['tc_balance']
+                    st.success(f"✅ {entry_wallet} に ¥{entry_amount:,} を記帳しました")
                     st.rerun()
                 else:
                     st.warning("⚠️ 項目と金額を入力してください")
@@ -217,12 +241,49 @@ with tab1:
 
         st.markdown('</div>', unsafe_allow_html=True)
 
+        # 資金移動フォーム
+        st.markdown('<div class="card">', unsafe_allow_html=True)
+        st.markdown('<p class="section-title">🔄 資金移動（現金 ⇔ PayPay）</p>', unsafe_allow_html=True)
+
+        if IS_ADMIN:
+            mv_date = st.date_input("📅 日付", datetime.now(), key="mv_date")
+            mv_direction = st.radio("移動方向", ["現金 → PayPay", "PayPay → 現金"], horizontal=True, key="mv_dir")
+            mv_amount = st.number_input("💴 移動金額", min_value=0, value=0, step=100, key="mv_amount")
+            mv_note = st.text_input("📎 備考", placeholder="任意", key="mv_note")
+
+            if st.button("🔄 資金を移動する", type="primary", use_container_width=True, key="do_mv"):
+                if mv_amount > 0:
+                    date_str = mv_date.strftime('%Y-%m-%d')
+                    note_text = f" ({mv_note})" if mv_note else ""
+                    if mv_direction == "現金 → PayPay":
+                        src, dst = "現金", "PayPay"
+                    else:
+                        src, dst = "PayPay", "現金"
+
+                    item_src = f"資金移動 → {dst}{note_text}"
+                    item_dst = f"資金移動 ← {src}{note_text}"
+
+                    # 移動元から支出
+                    add_transport_balance_entry(date_str, item_src, 0, mv_amount, src)
+                    # 移動先に収入
+                    add_transport_balance_entry(date_str, item_dst, mv_amount, 0, dst)
+                    del st.session_state['tc_balance']
+                    st.success(f"✅ {src} → {dst} に ¥{mv_amount:,} を移動しました")
+                    st.rerun()
+                else:
+                    st.warning("⚠️ 金額を入力してください")
+        else:
+            st.info("🔒 管理者権限が必要です")
+
+        st.markdown('</div>', unsafe_allow_html=True)
+
         # サマリー
         st.markdown('<div class="card">', unsafe_allow_html=True)
-        st.markdown('<p class="section-title">📊 サマリー</p>', unsafe_allow_html=True)
-        st.metric("📈 収入累計", f"¥{total_income:,}")
-        st.metric("📉 支出累計", f"¥{total_expense:,}")
-        st.metric("💰 現在残高", f"¥{current_balance:,}")
+        st.markdown('<p class="section-title">📊 財布別サマリー</p>', unsafe_allow_html=True)
+        st.metric("💵 現金 残高", f"¥{cash_balance:,}")
+        st.metric("📱 PayPay 残高", f"¥{paypay_balance:,}")
+        st.divider()
+        st.metric("💰 合計残高", f"¥{total_balance:,}")
         st.markdown('</div>', unsafe_allow_html=True)
 
 # ============================================================

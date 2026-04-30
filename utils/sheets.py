@@ -228,9 +228,13 @@ def load_transport_balance() -> pd.DataFrame:
     """交通費会計を読み込み"""
     df = load_sheet_as_dataframe(
         SHEET_TRANSPORT_BALANCE,
-        ['日付', '項目', '収入', '支出', '残高']
+        ['日付', '項目', '財布', '収入', '支出', '残高']
     )
     if len(df) > 0:
+        # 「財布」列がない古いデータへの互換対応
+        if '財布' not in df.columns:
+            df['財布'] = '現金'
+        df['財布'] = df['財布'].fillna('現金').replace('', '現金').astype(str)
         df['収入'] = pd.to_numeric(df['収入'], errors='coerce').fillna(0)
         df['支出'] = pd.to_numeric(df['支出'], errors='coerce').fillna(0)
         df['残高'] = pd.to_numeric(df['残高'], errors='coerce').fillna(0)
@@ -242,15 +246,18 @@ def save_transport_balance(df: pd.DataFrame):
     return save_dataframe_to_sheet(df, SHEET_TRANSPORT_BALANCE)
 
 
-def add_transport_balance_entry(date: str, item: str, income: int, expense: int) -> int:
+def add_transport_balance_entry(date: str, item: str, income: int, expense: int, wallet: str = '現金') -> int:
     """交通費会計に1行追加"""
     df = load_transport_balance()
-    current = int(df['残高'].iloc[-1]) if len(df) > 0 else 0
+    # 該当財布の残高を計算
+    wallet_df = df[df['財布'] == wallet] if len(df) > 0 else pd.DataFrame()
+    current = int(wallet_df['残高'].iloc[-1]) if len(wallet_df) > 0 else 0
     new_balance = current + income - expense
     
     new_entry = pd.DataFrame({
         '日付': [date],
         '項目': [item],
+        '財布': [wallet],
         '収入': [income],
         '支出': [expense],
         '残高': [new_balance]
