@@ -365,18 +365,18 @@ with tab2:
                     if amt > 0:
                         st.markdown(f"""
                         <div style="background:linear-gradient(135deg,{PRIMARY_COLOR} 0%,{PRIMARY_LIGHT} 100%);
-                            border-radius:12px;padding:14px 10px;text-align:center;margin-bottom:8px;
+                            border-radius:12px;padding:14px 5px;text-align:center;margin-bottom:8px;
                             box-shadow:0 4px 12px rgba(103,3,23,0.2);">
                             <div style="color:rgba(255,255,255,0.85);font-size:0.8rem;">🚗 {short_name}</div>
-                            <div style="color:#fff;font-size:1.6rem;font-weight:800;">¥{amt:,}</div>
+                            <div style="color:#fff;font-size:1.25rem;font-weight:800;white-space:nowrap;">¥{amt:,}</div>
                             <div style="color:rgba(255,255,255,0.7);font-size:0.75rem;">{cnt}件</div>
                         </div>""", unsafe_allow_html=True)
                     else:
                         st.markdown(f"""
-                        <div style="background:#f8f9fa;border-radius:12px;padding:14px 10px;
+                        <div style="background:#f8f9fa;border-radius:12px;padding:14px 5px;
                             text-align:center;margin-bottom:8px;border:1px solid #e9ecef;">
                             <div style="color:#999;font-size:0.8rem;">🚗 {short_name}</div>
-                            <div style="color:#28a745;font-size:1.6rem;font-weight:800;">¥0</div>
+                            <div style="color:#28a745;font-size:1.25rem;font-weight:800;white-space:nowrap;">¥0</div>
                             <div style="color:#999;font-size:0.75rem;">返済なし</div>
                         </div>""", unsafe_allow_html=True)
 
