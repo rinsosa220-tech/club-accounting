@@ -54,26 +54,37 @@ def get_spreadsheet():
         return None
 
 
-def get_or_create_worksheet(sheet_name: str, headers: list = None):
-    """ワークシートを取得、なければ作成"""
+import time
+
+@st.cache_resource(show_spinner=False, ttl=3600)
+def get_or_create_worksheet(sheet_name: str, headers: tuple = None):
+    """ワークシートを取得、なければ作成（キャッシュしてAPI呼び出し削減）"""
     spreadsheet = get_spreadsheet()
     if spreadsheet is None:
         return None
     
-    try:
-        worksheet = spreadsheet.worksheet(sheet_name)
-    except gspread.exceptions.WorksheetNotFound:
-        # シートが存在しない場合は作成
-        worksheet = spreadsheet.add_worksheet(title=sheet_name, rows=1000, cols=20)
-        if headers:
-            worksheet.update('A1', [headers])
-    
-    return worksheet
+    for attempt in range(3):
+        try:
+            worksheet = spreadsheet.worksheet(sheet_name)
+            return worksheet
+        except gspread.exceptions.WorksheetNotFound:
+            # シートが存在しない場合は作成
+            worksheet = spreadsheet.add_worksheet(title=sheet_name, rows=1000, cols=20)
+            if headers:
+                worksheet.update('A1', [list(headers)])
+            return worksheet
+        except gspread.exceptions.APIError as e:
+            if attempt == 2:
+                st.error(f"⚠️ Google Sheets APIの制限に達しました。しばらく待ってから再試行してください。\n{e}")
+                return None
+            time.sleep(2 ** attempt)
+    return None
 
 
 def load_sheet_as_dataframe(sheet_name: str, default_columns: list = None) -> pd.DataFrame:
     """シートをDataFrameとして読み込む"""
-    worksheet = get_or_create_worksheet(sheet_name, default_columns)
+    headers_tuple = tuple(default_columns) if default_columns else None
+    worksheet = get_or_create_worksheet(sheet_name, headers_tuple)
     
     if worksheet is None:
         if default_columns:
@@ -96,7 +107,8 @@ def load_sheet_as_dataframe(sheet_name: str, default_columns: list = None) -> pd
 
 def save_dataframe_to_sheet(df: pd.DataFrame, sheet_name: str):
     """DataFrameをシートに保存（全データ上書き）"""
-    worksheet = get_or_create_worksheet(sheet_name, df.columns.tolist())
+    headers_tuple = tuple(df.columns.tolist())
+    worksheet = get_or_create_worksheet(sheet_name, headers_tuple)
     
     if worksheet is None:
         st.error("シートへの保存に失敗しました")
