@@ -93,10 +93,21 @@ with col_m2:
     else:
         st.info("👁️ 閲覧モード")
 
-# データ読み込み
-balance_df = load_transport_balance()
-driver_pay_df = load_driver_payments()
-collection_df = load_collection()
+# データ読み込み（session_stateでキャッシュしてAPI呼び出しを削減）
+try:
+    if 'tc_balance' not in st.session_state:
+        st.session_state.tc_balance = load_transport_balance()
+    if 'tc_driver_pay' not in st.session_state:
+        st.session_state.tc_driver_pay = load_driver_payments()
+    if 'tc_collection' not in st.session_state:
+        st.session_state.tc_collection = load_collection()
+except Exception as e:
+    st.error(f"⚠️ データの読み込みに失敗しました。ページを再読み込みしてください。\n\nエラー: {e}")
+    st.stop()
+
+balance_df = st.session_state.tc_balance
+driver_pay_df = st.session_state.tc_driver_pay
+collection_df = st.session_state.tc_collection
 
 # KPI計算
 current_balance = int(balance_df['残高'].iloc[-1]) if len(balance_df) > 0 else 0
@@ -167,6 +178,7 @@ with tab1:
                         st.rerun()
                 with bc2:
                     if st.button("↩️ 元に戻す", use_container_width=True, key="reload_bal"):
+                        del st.session_state['tc_balance']
                         st.rerun()
             else:
                 st.dataframe(disp_bal, use_container_width=True, hide_index=True, height=420,
@@ -300,7 +312,7 @@ with tab2:
                         checked = edited_dp[edited_dp["返済✓"] == True]
                         if len(checked) > 0:
                             today = datetime.now().strftime('%Y-%m-%d')
-                            full = load_driver_payments()
+                            full = st.session_state.tc_driver_pay.copy()
                             cnt = 0
                             for _, cr in checked.iterrows():
                                 m = (full['日付'] == cr['日付']) & (full['ドライバー'] == cr['ドライバー']) & (full['金額'] == cr['金額']) & (full['遠征名'] == cr['遠征名']) & (full['状態'] == '未返済')
@@ -310,12 +322,14 @@ with tab2:
                                     full.at[idx[0], '返済日'] = today
                                     cnt += 1
                             save_driver_payments(full)
+                            del st.session_state['tc_driver_pay']
                             st.success(f"✅ {cnt}件を返済済みにしました")
                             st.rerun()
                         else:
                             st.warning("⚠️ チェックを入れてください")
                 with dp2:
                     if st.button("↩️ 元に戻す", use_container_width=True, key="reload_dp"):
+                        del st.session_state['tc_driver_pay']
                         st.rerun()
             else:
                 st.dataframe(disp_dp, use_container_width=True, hide_index=True, height=350,
@@ -344,8 +358,9 @@ with tab2:
                         'ドライバー': [dp_driver], '金額': [dp_amount],
                         '状態': ['未返済'], '返済日': [''], '備考': [dp_note or '']
                     })
-                    updated = pd.concat([load_driver_payments(), new], ignore_index=True)
+                    updated = pd.concat([st.session_state.tc_driver_pay, new], ignore_index=True)
                     save_driver_payments(updated)
+                    del st.session_state['tc_driver_pay']
                     st.success(f"✅ {dp_driver} さんへの ¥{dp_amount:,} を登録しました")
                     st.rerun()
                 else:
@@ -377,7 +392,7 @@ with tab3:
         st.markdown('<div class="card">', unsafe_allow_html=True)
         st.markdown('<p class="section-title">👥 部員からの徴収状況</p>', unsafe_allow_html=True)
 
-        coll_df = load_collection()
+        coll_df = st.session_state.tc_collection.copy()
 
         if len(coll_df) > 0 and len(coll_df.columns) > 1:
             coll_df['名前'] = coll_df['名前'].fillna('').astype(str)
@@ -423,15 +438,17 @@ with tab3:
                     cc1, cc2, _ = st.columns([1, 1, 4])
                     with cc1:
                         if st.button("💾 徴収状況を保存", type="primary", use_container_width=True, key="save_coll_tc"):
-                            save_data = load_collection()
+                            save_data = st.session_state.tc_collection.copy()
                             for c in ev_cols:
                                 if c in edited_coll.columns:
                                     save_data[c] = edited_coll[c]
                             save_collection(save_data)
+                            del st.session_state['tc_collection']
                             st.success("✅ 保存しました")
                             st.rerun()
                     with cc2:
                         if st.button("↩️ 元に戻す", use_container_width=True, key="reload_coll_tc"):
+                            del st.session_state['tc_collection']
                             st.rerun()
                 else:
                     st.dataframe(disp_coll, use_container_width=True, hide_index=True, height=420, column_config=col_cfg)
@@ -443,7 +460,7 @@ with tab3:
 
     with col_right:
         # 徴収完了処理
-        ev_cols_r = [c for c in load_collection().columns if c != '名前']
+        ev_cols_r = [c for c in st.session_state.tc_collection.columns if c != '名前']
         if len(ev_cols_r) > 0 and IS_ADMIN:
             st.markdown('<div class="card">', unsafe_allow_html=True)
             st.markdown('<p class="section-title">✅ 徴収完了処理</p>', unsafe_allow_html=True)
@@ -452,11 +469,15 @@ with tab3:
             st.caption("全員から徴収が完了したら、ここで収入として計上します")
 
             if st.button("💰 全員徴収完了として記録", type="primary", use_container_width=True, key="complete_tc"):
-                c_data = load_collection()
+                c_data = st.session_state.tc_collection.copy()
                 collected = int(pd.to_numeric(c_data[sel_event], errors='coerce').fillna(0).sum())
                 c_data[sel_event] = 0
                 save_collection(c_data)
                 add_transport_balance_entry(datetime.now().strftime('%Y-%m-%d'), f"{sel_event} 徴収完了", collected, 0)
+                # キャッシュクリア
+                for k in ['tc_balance', 'tc_collection']:
+                    if k in st.session_state:
+                        del st.session_state[k]
                 st.success(f"✅ ¥{collected:,} を収入として計上しました")
                 st.balloons()
                 st.rerun()
@@ -465,7 +486,7 @@ with tab3:
         # 部員別の未払い詳細
         st.markdown('<div class="card">', unsafe_allow_html=True)
         st.markdown('<p class="section-title">⚠️ 未払い者リスト</p>', unsafe_allow_html=True)
-        coll_check = load_collection()
+        coll_check = st.session_state.tc_collection.copy()
         if len(coll_check) > 0:
             ev_c = [c for c in coll_check.columns if c != '名前']
             if len(ev_c) > 0:
