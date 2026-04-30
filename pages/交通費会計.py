@@ -222,19 +222,59 @@ with tab2:
         else:
             pending_dp = pd.DataFrame(columns=['日付', '遠征名', 'ドライバー', '金額', '状態', '返済日', '備考'])
 
-        if len(pending_dp) > 0:
-            # ドライバーごと集計
-            drv_summary = pending_dp.groupby('ドライバー')['金額'].agg(['sum', 'count']).reset_index()
-            drv_summary.columns = ['ドライバー', '未返済合計', '件数']
-            drv_summary = drv_summary.sort_values('未返済合計', ascending=False)
+        # 全ドライバー一覧ダッシュボード（未返済がなくても¥0で表示）
+        all_drivers = load_drivers()
+        driver_names = all_drivers['名前'].tolist() if len(all_drivers) > 0 else []
 
-            scols = st.columns(min(len(drv_summary), 4))
-            for i, (_, r) in enumerate(drv_summary.iterrows()):
-                if i < 4:
-                    with scols[i % 4]:
-                        st.metric(f"🚗 {r['ドライバー']}", f"¥{int(r['未返済合計']):,}", f"{int(r['件数'])}件")
+        if len(driver_names) > 0:
+            # ドライバーごとの未返済額を集計
+            if len(pending_dp) > 0:
+                drv_agg = pending_dp.groupby('ドライバー')['金額'].agg(['sum', 'count']).reset_index()
+                drv_agg.columns = ['ドライバー', '未返済合計', '件数']
+            else:
+                drv_agg = pd.DataFrame(columns=['ドライバー', '未返済合計', '件数'])
+
+            # 全ドライバーのDataFrameを作成（未登録は¥0）
+            all_drv_df = pd.DataFrame({'ドライバー': driver_names})
+            all_drv_df = all_drv_df.merge(drv_agg, on='ドライバー', how='left')
+            all_drv_df['未返済合計'] = all_drv_df['未返済合計'].fillna(0).astype(int)
+            all_drv_df['件数'] = all_drv_df['件数'].fillna(0).astype(int)
+            all_drv_df = all_drv_df.sort_values('未返済合計', ascending=False).reset_index(drop=True)
+
+            st.markdown('<p class="section-title">👥 ドライバー別 未返済額</p>', unsafe_allow_html=True)
+
+            # 5人×2行で表示
+            row1_cols = st.columns(5)
+            row2_cols = st.columns(5)
+            for i, (_, r) in enumerate(all_drv_df.iterrows()):
+                cols = row1_cols if i < 5 else row2_cols
+                col_idx = i % 5
+                with cols[col_idx]:
+                    amt = int(r['未返済合計'])
+                    cnt = int(r['件数'])
+                    # 苗字だけ太字で表示（省スペース）
+                    short_name = r['ドライバー'].split('　')[0] if '　' in r['ドライバー'] else r['ドライバー']
+                    if amt > 0:
+                        st.markdown(f"""
+                        <div style="background:linear-gradient(135deg,{PRIMARY_COLOR} 0%,{PRIMARY_LIGHT} 100%);
+                            border-radius:12px;padding:14px 10px;text-align:center;margin-bottom:8px;
+                            box-shadow:0 4px 12px rgba(103,3,23,0.2);">
+                            <div style="color:rgba(255,255,255,0.85);font-size:0.8rem;">🚗 {short_name}</div>
+                            <div style="color:#fff;font-size:1.6rem;font-weight:800;">¥{amt:,}</div>
+                            <div style="color:rgba(255,255,255,0.7);font-size:0.75rem;">{cnt}件</div>
+                        </div>""", unsafe_allow_html=True)
+                    else:
+                        st.markdown(f"""
+                        <div style="background:#f8f9fa;border-radius:12px;padding:14px 10px;
+                            text-align:center;margin-bottom:8px;border:1px solid #e9ecef;">
+                            <div style="color:#999;font-size:0.8rem;">🚗 {short_name}</div>
+                            <div style="color:#28a745;font-size:1.6rem;font-weight:800;">¥0</div>
+                            <div style="color:#999;font-size:0.75rem;">返済なし</div>
+                        </div>""", unsafe_allow_html=True)
+
             st.divider()
 
+        if len(pending_dp) > 0:
             disp_dp = pending_dp[['日付', '遠征名', 'ドライバー', '金額', '備考']].sort_values('日付', ascending=False).reset_index(drop=True)
 
             if IS_ADMIN:
@@ -276,7 +316,8 @@ with tab2:
                 st.dataframe(disp_dp, use_container_width=True, hide_index=True, height=350,
                     column_config={"金額": st.column_config.NumberColumn("💴 金額", format="¥%d")})
         else:
-            st.markdown('<div style="text-align:center;padding:40px 0;color:#999;"><div style="font-size:3rem;">🎉</div><p>未返済のドライバー立替はありません</p></div>', unsafe_allow_html=True)
+            if len(driver_names) == 0:
+                st.markdown('<div style="text-align:center;padding:40px 0;color:#999;"><div style="font-size:3rem;">🎉</div><p>未返済のドライバー立替はありません</p></div>', unsafe_allow_html=True)
 
         st.markdown('</div>', unsafe_allow_html=True)
 
