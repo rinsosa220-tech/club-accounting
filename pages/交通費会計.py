@@ -46,6 +46,12 @@ def load_driver_payments():
 def save_driver_payments(df):
     return save_dataframe_to_sheet(df, SHEET_DRIVER_PAYMENTS)
 
+# ドライバー10人のフルネームリスト
+DRIVER_LIST = [
+    "飯尾　郁夢", "新井　稜平", "田中　宏季", "阪井　裕貴", "小泉　諭示",
+    "白井　悠也", "吉田　倫太郎", "山本　晃輔", "森　尊慈", "植村　亮"
+]
+
 PRIMARY_COLOR = "#670317"
 PRIMARY_LIGHT = "#8b1a33"
 
@@ -223,8 +229,7 @@ with tab2:
             pending_dp = pd.DataFrame(columns=['日付', '遠征名', 'ドライバー', '金額', '状態', '返済日', '備考'])
 
         # 全ドライバー一覧ダッシュボード（未返済がなくても¥0で表示）
-        all_drivers = load_drivers()
-        driver_names = all_drivers['名前'].tolist() if len(all_drivers) > 0 else []
+        driver_names = DRIVER_LIST
 
         if len(driver_names) > 0:
             # ドライバーごとの未返済額を集計
@@ -326,15 +331,9 @@ with tab2:
         st.markdown('<p class="section-title">➕ ドライバー返済を登録</p>', unsafe_allow_html=True)
 
         if IS_ADMIN:
-            drivers = load_drivers()
-            driver_names = drivers['名前'].tolist() if len(drivers) > 0 else []
-
             dp_date = st.date_input("📅 日付", datetime.now(), key="dp_date")
             dp_event = st.text_input("📝 遠征名", placeholder="例: 10月練習試合", key="dp_event")
-            if driver_names:
-                dp_driver = st.selectbox("🚗 ドライバー", driver_names, key="dp_driver")
-            else:
-                dp_driver = st.text_input("🚗 ドライバー名", key="dp_driver_text")
+            dp_driver = st.selectbox("🚗 ドライバー", DRIVER_LIST, key="dp_driver")
             dp_amount = st.number_input("💴 金額", min_value=0, value=0, step=100, key="dp_amount")
             dp_note = st.text_input("📎 備考", placeholder="任意", key="dp_note")
 
