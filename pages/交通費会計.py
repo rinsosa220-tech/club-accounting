@@ -21,9 +21,30 @@ IS_ADMIN = CURRENT_ROLE == "admin"
 from utils.sheets import (
     load_transport_balance, save_transport_balance, add_transport_balance_entry,
     load_collection, save_collection,
-    load_driver_payments, save_driver_payments,
-    load_drivers, load_members
+    load_drivers, load_members,
+    load_sheet_as_dataframe, save_dataframe_to_sheet
 )
+
+# ドライバー返済管理（直接定義 - 互換性のため）
+SHEET_DRIVER_PAYMENTS = 'driver_payments'
+
+def load_driver_payments():
+    df = load_sheet_as_dataframe(
+        SHEET_DRIVER_PAYMENTS,
+        ['日付', '遠征名', 'ドライバー', '金額', '状態', '返済日', '備考']
+    )
+    if len(df) > 0:
+        df['日付'] = df['日付'].fillna('').astype(str)
+        df['遠征名'] = df['遠征名'].fillna('').astype(str)
+        df['ドライバー'] = df['ドライバー'].fillna('').astype(str)
+        df['金額'] = pd.to_numeric(df['金額'], errors='coerce').fillna(0).astype(int)
+        df['状態'] = df['状態'].fillna('未返済').astype(str)
+        df['返済日'] = df['返済日'].fillna('').astype(str)
+        df['備考'] = df['備考'].fillna('').astype(str)
+    return df
+
+def save_driver_payments(df):
+    return save_dataframe_to_sheet(df, SHEET_DRIVER_PAYMENTS)
 
 PRIMARY_COLOR = "#670317"
 PRIMARY_LIGHT = "#8b1a33"
