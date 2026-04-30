@@ -19,7 +19,7 @@ CURRENT_ROLE = st.session_state.get("role", "guest")
 IS_ADMIN = CURRENT_ROLE == "admin"
 
 from utils.sheets import (
-    load_transport_balance, save_transport_balance, add_transport_balance_entry,
+    load_transport_balance, save_transport_balance,
     load_collection, save_collection,
     load_drivers, load_members,
     load_sheet_as_dataframe, save_dataframe_to_sheet
@@ -45,6 +45,23 @@ def load_driver_payments():
 
 def save_driver_payments(df):
     return save_dataframe_to_sheet(df, SHEET_DRIVER_PAYMENTS)
+
+def add_transport_balance_entry(date, item, income, expense, wallet='現金'):
+    """交通費会計に1行追加（財布別残高対応）"""
+    df = load_transport_balance()
+    # 「財布」列がない場合の互換対応
+    if len(df) > 0 and '財布' not in df.columns:
+        df['財布'] = '現金'
+    wallet_df = df[df['財布'] == wallet] if len(df) > 0 else pd.DataFrame()
+    current = int(wallet_df['残高'].iloc[-1]) if len(wallet_df) > 0 else 0
+    new_balance = current + income - expense
+    new_entry = pd.DataFrame({
+        '日付': [date], '項目': [item], '財布': [wallet],
+        '収入': [income], '支出': [expense], '残高': [new_balance]
+    })
+    df = pd.concat([df, new_entry], ignore_index=True)
+    save_transport_balance(df)
+    return new_balance
 
 # ドライバー10人のフルネームリスト
 DRIVER_LIST = [
