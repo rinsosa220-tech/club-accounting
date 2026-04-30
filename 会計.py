@@ -490,12 +490,12 @@ with tab3:
 st.markdown("<br>", unsafe_allow_html=True)
 
 # ======================
-# 取引履歴セクション（権限に応じて表示切替）
+# 取引履歴セクション（Excel風の編集・閲覧）
 # ======================
 if IS_ADMIN:
-    st.markdown('<p class="section-title">📋 取引履歴（全期間・編集可能）</p>', unsafe_allow_html=True)
+    st.markdown('<p class="section-title">📋 取引履歴 — Excel風編集</p>', unsafe_allow_html=True)
 else:
-    st.markdown('<p class="section-title">📋 取引履歴（全期間・閲覧専用）</p>', unsafe_allow_html=True)
+    st.markdown('<p class="section-title">📋 取引履歴（閲覧専用）</p>', unsafe_allow_html=True)
 
 if len(df) > 0:
     display_df = df.copy()
@@ -503,90 +503,163 @@ if len(df) > 0:
     display_df['備考'] = display_df['備考'].fillna("").astype(str)
     if '決済方法' not in display_df.columns:
         display_df['決済方法'] = '現金 (財布)'
-    display_df = display_df.sort_values('日付', ascending=False).reset_index(drop=True)
-    
+
+    # --- ツールバー: 検索・フィルタ・ソート ---
+    tb1, tb2, tb3 = st.columns([3, 1.5, 2])
+    with tb1:
+        search_query = st.text_input(
+            "🔍 検索", placeholder="科目・備考をキーワード検索...",
+            label_visibility="collapsed", key="tx_search"
+        )
+    with tb2:
+        filter_type = st.selectbox(
+            "種別フィルタ", ["すべて", "収入", "支出"],
+            label_visibility="collapsed", key="tx_filter_type"
+        )
+    with tb3:
+        sort_option = st.selectbox(
+            "並び替え",
+            ["📅 日付（新しい順）", "📅 日付（古い順）", "💴 金額（大きい順）", "💴 金額（小さい順）"],
+            label_visibility="collapsed", key="tx_sort"
+        )
+
+    # --- フィルタ適用 ---
+    full_df = display_df.copy()
+    full_df['_orig_idx'] = range(len(full_df))
+
+    mask = pd.Series([True] * len(full_df), index=full_df.index)
+    if filter_type != "すべて":
+        mask = mask & (full_df['種別'] == filter_type)
+    if search_query:
+        search_lower = search_query.lower()
+        text_mask = full_df.apply(
+            lambda row: search_lower in str(row.get('科目', '')).lower()
+                     or search_lower in str(row.get('備考', '')).lower(),
+            axis=1
+        )
+        mask = mask & text_mask
+
+    visible_df = full_df[mask].copy()
+    hidden_df = full_df[~mask].copy()
+
+    # --- ソート適用 ---
+    if "新しい順" in sort_option:
+        visible_df = visible_df.sort_values('日付', ascending=False)
+    elif "古い順" in sort_option:
+        visible_df = visible_df.sort_values('日付', ascending=True)
+    elif "大きい順" in sort_option:
+        visible_df = visible_df.sort_values('金額', ascending=False)
+    elif "小さい順" in sort_option:
+        visible_df = visible_df.sort_values('金額', ascending=True)
+
+    visible_df = visible_df.reset_index(drop=True)
+
+    # 件数表示
+    if len(visible_df) < len(full_df):
+        st.caption(f"🔎 {len(visible_df)} / {len(full_df)} 件を表示中（フィルタ適用中）")
+    else:
+        st.caption(f"📊 全 {len(full_df)} 件")
+
     if IS_ADMIN:
-        # 管理者: 編集・削除可能
-        # 削除用カラムを一番左に追加
-        display_df.insert(0, "削除", False)
-        
-        # カラム順序を調整
+        # --- 管理者: Excel風編集 ---
+        edit_df = visible_df.drop(columns=['_orig_idx']).copy()
+        edit_df.insert(0, "削除", False)
+
         column_order = ['削除', '日付', '種別', '科目', '金額', '決済方法', '備考']
-        display_df = display_df[[c for c in column_order if c in display_df.columns]]
-        
+        edit_df = edit_df[[c for c in column_order if c in edit_df.columns]]
+
         edited_df = st.data_editor(
-            display_df,
+            edit_df,
             use_container_width=True,
             hide_index=True,
             num_rows="dynamic",
+            height=480,
             column_config={
                 "削除": st.column_config.CheckboxColumn(
-                    "🗑️",
-                    help="チェックすると削除されます",
-                    default=False,
-                    width="small"
+                    "🗑️", help="チェックして保存すると削除されます",
+                    default=False, width="small"
                 ),
                 "日付": st.column_config.TextColumn("📅 日付", width="small"),
                 "種別": st.column_config.SelectboxColumn(
-                    "📊 種別",
-                    options=["収入", "支出"],
-                    width="small"
+                    "📊 種別", options=["収入", "支出"], width="small"
                 ),
                 "科目": st.column_config.SelectboxColumn(
                     "📁 科目",
-                    options=ALL_CATEGORIES + ["資金移動 → 銀行口座", "資金移動 → 現金 (財布)", "資金移動 ← 銀行口座", "資金移動 ← 現金 (財布)"],
+                    options=ALL_CATEGORIES + [
+                        "資金移動 → 銀行口座", "資金移動 → 現金 (財布)",
+                        "資金移動 ← 銀行口座", "資金移動 ← 現金 (財布)"
+                    ],
                     width="medium"
                 ),
                 "金額": st.column_config.NumberColumn(
-                    "💴 金額",
-                    min_value=0,
-                    format="¥%d",
-                    width="small"
+                    "💴 金額", min_value=0, format="¥%d", step=100, width="small"
                 ),
                 "決済方法": st.column_config.SelectboxColumn(
-                    "💳 決済方法",
-                    options=PAYMENT_METHODS,
-                    width="small"
+                    "💳 決済方法", options=PAYMENT_METHODS, width="small"
                 ),
-                "備考": st.column_config.TextColumn("📝 備考", width="medium")
+                "備考": st.column_config.TextColumn(
+                    "📝 備考（メモ）", width="large",
+                    help="例外処理や補足情報をここに記入"
+                )
             },
             key="data_editor"
         )
-        
-        # 削除チェックがついている行を除外して保存用データを作成
-        to_save_df = edited_df[edited_df["削除"] == False].drop(columns=["削除"]).copy()
-        
-        # 元データ（削除カラムなし）と比較
-        original_df = display_df.drop(columns=["削除"]).copy()
-        
-        # 変更検知して保存
-        if not original_df.equals(to_save_df):
+
+        # --- アクションバー: 保存 / 元に戻す / CSVエクスポート ---
+        act1, act2, act3, act4 = st.columns([1.2, 1.2, 1.2, 3])
+        with act1:
+            save_clicked = st.button("💾 変更を保存", type="primary", use_container_width=True)
+        with act2:
+            reload_clicked = st.button("↩️ 元に戻す", use_container_width=True)
+        with act3:
+            export_df = display_df.copy()
+            export_df = export_df.sort_values('日付', ascending=False).reset_index(drop=True)
+            csv_data = export_df.to_csv(index=False, encoding='utf-8-sig')
+            st.download_button(
+                "📥 CSV出力", data=csv_data,
+                file_name=f"会計データ_{datetime.now().strftime('%Y%m%d')}.csv",
+                mime="text/csv", use_container_width=True
+            )
+
+        if save_clicked:
             try:
-                save_df = to_save_df.copy()
-                save_df['日付'] = pd.to_datetime(save_df['日付'])
-                save_df = save_df.sort_values('日付', ascending=False).reset_index(drop=True)
-                st.session_state.data = save_df
-                save_database(save_df)
-                st.success("✅ 変更を保存しました")
+                # 削除チェック行を除外
+                saved_visible = edited_df[edited_df["削除"] == False].drop(columns=["削除"]).copy()
+                # フィルタで非表示だった行を復元して結合
+                saved_hidden = hidden_df.drop(columns=['_orig_idx']).copy()
+                combined = pd.concat([saved_visible, saved_hidden], ignore_index=True)
+                combined['日付'] = pd.to_datetime(combined['日付'])
+                combined = combined.sort_values('日付', ascending=False).reset_index(drop=True)
+                st.session_state.data = combined
+                save_database(combined)
+                st.success("✅ 変更を保存しました！")
                 st.rerun()
             except Exception as e:
-                st.error(f"⚠️ 保存中にエラーが発生しました: {e}")
+                st.error(f"⚠️ 保存エラー: {e}")
+
+        if reload_clicked:
+            st.session_state.data = load_database()
+            st.success("↩️ Google Sheetsから最新データを再読み込みしました")
+            st.rerun()
+
     else:
-        # Guest: 閲覧専用（dataframeで表示）
+        # --- Guest: 閲覧専用 ---
+        view_df = visible_df.drop(columns=['_orig_idx']).copy()
         column_order = ['日付', '種別', '科目', '金額', '決済方法', '備考']
-        display_df = display_df[[c for c in column_order if c in display_df.columns]]
-        
+        view_df = view_df[[c for c in column_order if c in view_df.columns]]
+
         st.dataframe(
-            display_df,
+            view_df,
             use_container_width=True,
             hide_index=True,
+            height=480,
             column_config={
                 "日付": st.column_config.TextColumn("📅 日付", width="small"),
                 "種別": st.column_config.TextColumn("📊 種別", width="small"),
                 "科目": st.column_config.TextColumn("📁 科目", width="medium"),
                 "金額": st.column_config.NumberColumn("💴 金額", format="¥%d", width="small"),
                 "決済方法": st.column_config.TextColumn("💳 決済方法", width="small"),
-                "備考": st.column_config.TextColumn("📝 備考", width="medium")
+                "備考": st.column_config.TextColumn("📝 備考", width="large")
             }
         )
         st.caption("💡 データの編集には管理者権限が必要です")

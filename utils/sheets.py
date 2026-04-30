@@ -19,6 +19,7 @@ SHEET_MEMBERS = 'members'
 SHEET_DRIVERS = 'drivers'
 SHEET_COLLECTION = 'collection_status'
 SHEET_TRANSPORT_BALANCE = 'transportation_balance'
+SHEET_REIMBURSEMENTS = 'reimbursements'
 
 
 @st.cache_resource
@@ -259,3 +260,26 @@ def add_transport_balance_entry(date: str, item: str, income: int, expense: int)
     save_transport_balance(df)
     
     return new_balance
+
+
+def load_reimbursements() -> pd.DataFrame:
+    """返済待ちデータを読み込み"""
+    df = load_sheet_as_dataframe(
+        SHEET_REIMBURSEMENTS,
+        ['日付', '立替者', '金額', '内容', '決済方法', '状態', '返済日', '備考']
+    )
+    if len(df) > 0:
+        df['日付'] = df['日付'].fillna('').astype(str)
+        df['立替者'] = df['立替者'].fillna('').astype(str)
+        df['金額'] = pd.to_numeric(df['金額'], errors='coerce').fillna(0).astype(int)
+        df['内容'] = df['内容'].fillna('').astype(str)
+        df['決済方法'] = df['決済方法'].fillna('現金 (財布)').astype(str)
+        df['状態'] = df['状態'].fillna('未返済').astype(str)
+        df['返済日'] = df['返済日'].fillna('').astype(str)
+        df['備考'] = df['備考'].fillna('').astype(str)
+    return df
+
+
+def save_reimbursements(df: pd.DataFrame):
+    """返済待ちデータを保存"""
+    return save_dataframe_to_sheet(df, SHEET_REIMBURSEMENTS)
