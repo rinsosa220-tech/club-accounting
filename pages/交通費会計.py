@@ -211,9 +211,22 @@ with tab1:
                 bc1, bc2, _ = st.columns([1, 1, 4])
                 with bc1:
                     if st.button("💾 台帳を保存", type="primary", use_container_width=True, key="save_bal"):
-                        save_transport_balance(edited_bal)
+                        # 保存前に財布ごとの残高を再計算
+                        save_df = edited_bal.copy()
+                        save_df['収入'] = pd.to_numeric(save_df['収入'], errors='coerce').fillna(0).astype(int)
+                        save_df['支出'] = pd.to_numeric(save_df['支出'], errors='coerce').fillna(0).astype(int)
+                        if '財布' not in save_df.columns:
+                            save_df['財布'] = '現金'
+                        save_df['財布'] = save_df['財布'].fillna('現金').replace('', '現金')
+                        # 財布ごとに残高を積み上げ計算
+                        save_df['残高'] = 0
+                        for wallet_name in save_df['財布'].unique():
+                            mask = save_df['財布'] == wallet_name
+                            net = (save_df.loc[mask, '収入'] - save_df.loc[mask, '支出']).cumsum()
+                            save_df.loc[mask, '残高'] = net
+                        save_transport_balance(save_df)
                         del st.session_state['tc_balance']
-                        st.success("✅ 保存しました")
+                        st.success("✅ 残高を再計算して保存しました")
                         st.rerun()
                 with bc2:
                     if st.button("↩️ 元に戻す", use_container_width=True, key="reload_bal"):
