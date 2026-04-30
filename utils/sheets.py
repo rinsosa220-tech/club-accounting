@@ -283,3 +283,31 @@ def load_reimbursements() -> pd.DataFrame:
 def save_reimbursements(df: pd.DataFrame):
     """返済待ちデータを保存"""
     return save_dataframe_to_sheet(df, SHEET_REIMBURSEMENTS)
+
+
+# ======================
+# ドライバー返済管理
+# ======================
+SHEET_DRIVER_PAYMENTS = 'driver_payments'
+
+
+def load_driver_payments() -> pd.DataFrame:
+    """ドライバー返済データを読み込み"""
+    df = load_sheet_as_dataframe(
+        SHEET_DRIVER_PAYMENTS,
+        ['日付', '遠征名', 'ドライバー', '金額', '状態', '返済日', '備考']
+    )
+    if len(df) > 0:
+        df['日付'] = df['日付'].fillna('').astype(str)
+        df['遠征名'] = df['遠征名'].fillna('').astype(str)
+        df['ドライバー'] = df['ドライバー'].fillna('').astype(str)
+        df['金額'] = pd.to_numeric(df['金額'], errors='coerce').fillna(0).astype(int)
+        df['状態'] = df['状態'].fillna('未返済').astype(str)
+        df['返済日'] = df['返済日'].fillna('').astype(str)
+        df['備考'] = df['備考'].fillna('').astype(str)
+    return df
+
+
+def save_driver_payments(df: pd.DataFrame):
+    """ドライバー返済データを保存"""
+    return save_dataframe_to_sheet(df, SHEET_DRIVER_PAYMENTS)
