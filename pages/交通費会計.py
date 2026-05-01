@@ -20,7 +20,6 @@ IS_ADMIN = CURRENT_ROLE == "admin"
 
 from utils.sheets import (
     load_transport_balance, save_transport_balance,
-    load_collection, save_collection,
     load_drivers, load_members,
     load_sheet_as_dataframe, save_dataframe_to_sheet
 )
@@ -87,7 +86,7 @@ st.markdown(f"""
     /* KPIグリッド */
     .kpi-grid {{
         display: grid;
-        grid-template-columns: repeat(5, 1fr);
+        grid-template-columns: repeat(4, 1fr);
         gap: 12px;
         margin-bottom: 20px;
     }}
@@ -146,7 +145,7 @@ st.markdown(f"""
 st.markdown("""
 <div class="app-header">
     <p class="app-title">🚗 交通費会計</p>
-    <p class="app-subtitle">交通費用財布の収支 • ドライバー返済 • 部員徴収</p>
+    <p class="app-subtitle">交通費用財布の収支 • ドライバー返済</p>
 </div>
 """, unsafe_allow_html=True)
 
@@ -163,15 +162,12 @@ try:
         st.session_state.tc_balance = load_transport_balance()
     if 'tc_driver_pay' not in st.session_state:
         st.session_state.tc_driver_pay = load_driver_payments()
-    if 'tc_collection' not in st.session_state:
-        st.session_state.tc_collection = load_collection()
 except Exception as e:
     st.error(f"⚠️ データの読み込みに失敗しました。ページを再読み込みしてください。\n\nエラー: {e}")
     st.stop()
 
 balance_df = st.session_state.tc_balance
 driver_pay_df = st.session_state.tc_driver_pay
-collection_df = st.session_state.tc_collection
 
 # KPI計算
 # 財布別の残高計算
@@ -188,13 +184,6 @@ total_expense = int(balance_df['支出'].sum()) if len(balance_df) > 0 else 0
 
 pending_driver = driver_pay_df[driver_pay_df['状態'] == '未返済'] if len(driver_pay_df) > 0 else pd.DataFrame()
 driver_owed = int(pending_driver['金額'].sum()) if len(pending_driver) > 0 else 0
-
-event_cols = [c for c in collection_df.columns if c != '名前'] if len(collection_df) > 0 else []
-member_owed = 0
-if len(collection_df) > 0 and len(event_cols) > 0:
-    for c in event_cols:
-        collection_df[c] = pd.to_numeric(collection_df[c], errors='coerce').fillna(0)
-    member_owed = int(collection_df[event_cols].sum().sum())
 
 # KPI表示（CSSグリッドで重なり防止）
 st.markdown(f"""
@@ -215,17 +204,13 @@ st.markdown(f"""
         <div class="kpi-label">🚗 ドライバー未返済</div>
         <div class="kpi-value">¥{driver_owed:,}</div>
     </div>
-    <div class="kpi-card-sub">
-        <div class="kpi-label">👥 部員未徴収</div>
-        <div class="kpi-value">¥{member_owed:,}</div>
-    </div>
 </div>
 """, unsafe_allow_html=True)
 
 # ============================================================
 # タブ構成
 # ============================================================
-tab1, tab2, tab3 = st.tabs(["💰 収支台帳", "🚗 ドライバー返済", "👥 部員徴収"])
+tab1, tab2 = st.tabs(["💰 収支台帳", "🚗 ドライバー返済"])
 
 # ============================================================
 # タブ1: 収支台帳
@@ -528,134 +513,7 @@ with tab2:
                 )
                 st.markdown('</div>', unsafe_allow_html=True)
 
-# ============================================================
-# タブ3: 部員徴収
-# ============================================================
-with tab3:
-    col_left, col_right = st.columns([2, 1], gap="large")
 
-    with col_left:
-        st.markdown('<div class="card">', unsafe_allow_html=True)
-        st.markdown('<p class="section-title">👥 部員からの徴収状況</p>', unsafe_allow_html=True)
-
-        coll_df = st.session_state.tc_collection.copy()
-
-        if len(coll_df) > 0 and len(coll_df.columns) > 1:
-            coll_df['名前'] = coll_df['名前'].fillna('').astype(str)
-            ev_cols = [c for c in coll_df.columns if c != '名前']
-
-            if len(ev_cols) > 0:
-                for c in ev_cols:
-                    coll_df[c] = pd.to_numeric(coll_df[c], errors='coerce').fillna(0).astype(int)
-
-                coll_df['未払計'] = coll_df[ev_cols].sum(axis=1)
-                total_unpaid = coll_df['未払計'].sum()
-                unpaid_count = len(coll_df[coll_df['未払計'] > 0])
-                total_count = len(coll_df)
-                paid_rate = (total_count - unpaid_count) / total_count if total_count > 0 else 0
-
-                mc1, mc2, mc3 = st.columns(3)
-                with mc1:
-                    st.metric("💴 未回収総額", f"¥{total_unpaid:,}")
-                with mc2:
-                    st.metric("👥 未払者", f"{unpaid_count} / {total_count} 名")
-                with mc3:
-                    st.metric("📈 回収完了率", f"{paid_rate*100:.0f}%")
-                st.divider()
-
-                max_due = coll_df['未払計'].max() if coll_df['未払計'].max() > 0 else 1
-                coll_df['回収率'] = 1.0 - (coll_df['未払計'] / max_due)
-
-                disp_cols = ['名前'] + ev_cols + ['未払計', '回収率']
-                disp_coll = coll_df[disp_cols].copy()
-
-                col_cfg = {
-                    "名前": st.column_config.TextColumn("👤 名前", disabled=True, width="medium"),
-                    "未払計": st.column_config.NumberColumn("📊 未払計", format="¥%d", disabled=True, width="small"),
-                    "回収率": st.column_config.ProgressColumn("✅ 回収率", min_value=0, max_value=1, width="small"),
-                }
-                for c in ev_cols:
-                    col_cfg[c] = st.column_config.NumberColumn(c, format="¥%d", step=100, width="small")
-
-                if IS_ADMIN:
-                    edited_coll = st.data_editor(disp_coll, use_container_width=True, hide_index=True,
-                        height=420, column_config=col_cfg, key="coll_editor_tc")
-
-                    cc1, cc2, _ = st.columns([1, 1, 4])
-                    with cc1:
-                        if st.button("💾 徴収状況を保存", type="primary", use_container_width=True, key="save_coll_tc"):
-                            save_data = st.session_state.tc_collection.copy()
-                            for c in ev_cols:
-                                if c in edited_coll.columns:
-                                    save_data[c] = edited_coll[c]
-                            save_collection(save_data)
-                            del st.session_state['tc_collection']
-                            st.success("✅ 保存しました")
-                            st.rerun()
-                    with cc2:
-                        if st.button("↩️ 元に戻す", use_container_width=True, key="reload_coll_tc"):
-                            del st.session_state['tc_collection']
-                            st.rerun()
-                else:
-                    st.dataframe(disp_coll, use_container_width=True, hide_index=True, height=420, column_config=col_cfg)
-            else:
-                st.info("📭 徴収イベントがまだありません")
-        else:
-            st.info("📭 徴収データがありません")
-        st.markdown('</div>', unsafe_allow_html=True)
-
-    with col_right:
-        # 徴収完了処理
-        ev_cols_r = [c for c in st.session_state.tc_collection.columns if c != '名前']
-        if len(ev_cols_r) > 0 and IS_ADMIN:
-            st.markdown('<div class="card">', unsafe_allow_html=True)
-            st.markdown('<p class="section-title">✅ 徴収完了処理</p>', unsafe_allow_html=True)
-
-            sel_event = st.selectbox("イベント選択", ev_cols_r, key="complete_event_tc")
-            st.caption("全員から徴収が完了したら、ここで収入として計上します")
-
-            if st.button("💰 全員徴収完了として記録", type="primary", use_container_width=True, key="complete_tc"):
-                c_data = st.session_state.tc_collection.copy()
-                collected = int(pd.to_numeric(c_data[sel_event], errors='coerce').fillna(0).sum())
-                c_data[sel_event] = 0
-                save_collection(c_data)
-                add_transport_balance_entry(datetime.now().strftime('%Y-%m-%d'), f"{sel_event} 徴収完了", collected, 0)
-                # キャッシュクリア
-                for k in ['tc_balance', 'tc_collection']:
-                    if k in st.session_state:
-                        del st.session_state[k]
-                st.success(f"✅ ¥{collected:,} を収入として計上しました")
-                st.balloons()
-                st.rerun()
-            st.markdown('</div>', unsafe_allow_html=True)
-
-        # 部員別の未払い詳細
-        st.markdown('<div class="card">', unsafe_allow_html=True)
-        st.markdown('<p class="section-title">⚠️ 未払い者リスト</p>', unsafe_allow_html=True)
-        coll_check = st.session_state.tc_collection.copy()
-        if len(coll_check) > 0:
-            ev_c = [c for c in coll_check.columns if c != '名前']
-            if len(ev_c) > 0:
-                for c in ev_c:
-                    coll_check[c] = pd.to_numeric(coll_check[c], errors='coerce').fillna(0)
-                coll_check['未払計'] = coll_check[ev_c].sum(axis=1)
-                unpaid_members = coll_check[coll_check['未払計'] > 0][['名前', '未払計']].sort_values('未払計', ascending=False)
-                if len(unpaid_members) > 0:
-                    for _, row in unpaid_members.iterrows():
-                        st.markdown(f"""
-                        <div style="display:flex;justify-content:space-between;align-items:center;
-                            padding:10px 16px;margin-bottom:6px;background:#fff5f5;border-radius:10px;
-                            border-left:4px solid {PRIMARY_COLOR};">
-                            <span style="font-weight:600;">👤 {row['名前']}</span>
-                            <span style="font-weight:800;color:{PRIMARY_COLOR};">¥{int(row['未払計']):,}</span>
-                        </div>""", unsafe_allow_html=True)
-                else:
-                    st.markdown('<div style="text-align:center;padding:20px;color:#999;">🎉 全員徴収済み</div>', unsafe_allow_html=True)
-            else:
-                st.info("徴収イベントがありません")
-        else:
-            st.info("データがありません")
-        st.markdown('</div>', unsafe_allow_html=True)
 
 # フッター
 st.markdown(f"""
