@@ -237,10 +237,13 @@ with tab1:
         summary.columns = ['立替者', '未返済合計', '件数']
         summary = summary.sort_values('未返済合計', ascending=False).reset_index(drop=True)
 
-        summary_cols = st.columns(min(len(summary), 4))
-        for i, (_, row) in enumerate(summary.iterrows()):
-            if i < 4:
-                with summary_cols[i % 4]:
+        # 4列ずつ複数行で全員表示
+        cols_per_row = 4
+        for row_start in range(0, len(summary), cols_per_row):
+            row_slice = summary.iloc[row_start:row_start + cols_per_row]
+            row_cols = st.columns(min(len(row_slice), cols_per_row))
+            for i, (_, row) in enumerate(row_slice.iterrows()):
+                with row_cols[i]:
                     st.metric(
                         f"👤 {row['立替者']}",
                         f"¥{int(row['未返済合計']):,}",

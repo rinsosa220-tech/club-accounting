@@ -536,7 +536,7 @@ st.markdown("<br>", unsafe_allow_html=True)
 # 取引履歴セクション（Excel風の編集・閲覧）
 # ======================
 if IS_ADMIN:
-    st.markdown('<p class="section-title">📋 取引履歴 — Excel風編集</p>', unsafe_allow_html=True)
+    st.markdown('<p class="section-title">📋 取引履歴</p>', unsafe_allow_html=True)
 else:
     st.markdown('<p class="section-title">📋 取引履歴（閲覧専用）</p>', unsafe_allow_html=True)
 
