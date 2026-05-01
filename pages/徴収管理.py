@@ -195,23 +195,18 @@ with col_right:
         st.markdown('<p class="section-title">✅ 徴収完了処理</p>', unsafe_allow_html=True)
 
         sel_event = st.selectbox("イベント選択", ev_cols, key="complete_event_tc")
-        st.caption("全員から徴収が完了したら、ここで交通費の財布(現金)に収入として計上します。")
+        st.caption("全員から徴収が完了したら、ボタンを押して未払い残高をリセットします。交通費の財布への計上は別途手動で行ってください。")
 
-        if st.button("💰 全員徴収完了として記録", type="primary", use_container_width=True):
+        if st.button("✅ 全員徴収完了として記録", type="primary", use_container_width=True):
             c_data = st.session_state.tc_collection.copy()
             collected = int(pd.to_numeric(c_data[sel_event], errors='coerce').fillna(0).sum())
             c_data[sel_event] = 0
             save_collection(c_data)
             
-            # 会計に記録する際、add_transport_balance_entry が utils/sheets.py にあるか確認が必要です。
-            # 今回は新しく定義した関数を呼び出します
-            add_transport_balance_entry(datetime.now().strftime('%Y-%m-%d'), f"{sel_event} 徴収完了", collected, 0, wallet="現金")
-            
             # キャッシュクリア
-            for k in ['tc_balance', 'tc_collection']:
-                if k in st.session_state:
-                    del st.session_state[k]
-            st.success(f"✅ ¥{collected:,} を現金財布の収入として計上しました")
+            if 'tc_collection' in st.session_state:
+                del st.session_state['tc_collection']
+            st.success(f"✅ {sel_event}の徴収完了処理を行いました（計: ¥{collected:,}）")
             st.balloons()
             st.rerun()
         st.markdown('</div>', unsafe_allow_html=True)
