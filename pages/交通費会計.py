@@ -120,6 +120,10 @@ st.markdown(f"""
         .kpi-card-sub {{ padding: 12px 8px !important; }}
         .kpi-card-sub .kpi-value {{ font-size: 1.15rem !important; }}
         .kpi-card-sub .kpi-label, .kpi-card-main .kpi-label {{ font-size: 0.7rem !important; }}
+        .driver-grid {{
+            grid-template-columns: repeat(2, 1fr) !important;
+            gap: 6px !important;
+        }}
         [data-testid="stMetricValue"] {{ font-size: 1.2rem !important; }}
         [data-testid="stMetricLabel"] {{ font-size: 0.7rem !important; }}
         [data-testid="stHorizontalBlock"] {{
@@ -405,34 +409,31 @@ with tab2:
 
             st.markdown('<p class="section-title">👥 ドライバー別 未返済額</p>', unsafe_allow_html=True)
 
-            # 5人×2行で表示
-            row1_cols = st.columns(5)
-            row2_cols = st.columns(5)
-            for i, (_, r) in enumerate(all_drv_df.iterrows()):
-                cols = row1_cols if i < 5 else row2_cols
-                col_idx = i % 5
-                with cols[col_idx]:
-                    amt = int(r['未返済合計'])
-                    cnt = int(r['件数'])
-                    # 苗字だけ太字で表示（省スペース）
-                    short_name = r['ドライバー'].split('　')[0] if '　' in r['ドライバー'] else r['ドライバー']
-                    if amt > 0:
-                        st.markdown(f"""
-                        <div style="background:linear-gradient(135deg,{PRIMARY_COLOR} 0%,{PRIMARY_LIGHT} 100%);
-                            border-radius:12px;padding:14px 5px;text-align:center;margin-bottom:8px;
-                            box-shadow:0 4px 12px rgba(103,3,23,0.2);">
-                            <div style="color:rgba(255,255,255,0.85);font-size:0.8rem;">🚗 {short_name}</div>
-                            <div style="color:#fff;font-size:1.25rem;font-weight:800;white-space:nowrap;">¥{amt:,}</div>
-                            <div style="color:rgba(255,255,255,0.7);font-size:0.75rem;">{cnt}件</div>
-                        </div>""", unsafe_allow_html=True)
-                    else:
-                        st.markdown(f"""
-                        <div style="background:#f8f9fa;border-radius:12px;padding:14px 5px;
-                            text-align:center;margin-bottom:8px;border:1px solid #e9ecef;">
-                            <div style="color:#999;font-size:0.8rem;">🚗 {short_name}</div>
-                            <div style="color:#28a745;font-size:1.25rem;font-weight:800;white-space:nowrap;">¥0</div>
-                            <div style="color:#999;font-size:0.75rem;">返済なし</div>
-                        </div>""", unsafe_allow_html=True)
+            # CSSグリッドで全ドライバーを表示（スマホでは2列に折り返し）
+            cards_html = '<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:12px;" class="driver-grid">'
+            for _, r in all_drv_df.iterrows():
+                amt = int(r['未返済合計'])
+                cnt = int(r['件数'])
+                short_name = r['ドライバー'].split('　')[0] if '　' in r['ドライバー'] else r['ドライバー']
+                if amt > 0:
+                    cards_html += f"""
+                    <div style="background:linear-gradient(135deg,{PRIMARY_COLOR} 0%,{PRIMARY_LIGHT} 100%);
+                        border-radius:12px;padding:12px 5px;text-align:center;
+                        box-shadow:0 4px 12px rgba(103,3,23,0.2);">
+                        <div style="color:rgba(255,255,255,0.85);font-size:0.75rem;">🚗 {short_name}</div>
+                        <div style="color:#fff;font-size:1.1rem;font-weight:800;white-space:nowrap;">¥{amt:,}</div>
+                        <div style="color:rgba(255,255,255,0.7);font-size:0.7rem;">{cnt}件</div>
+                    </div>"""
+                else:
+                    cards_html += f"""
+                    <div style="background:#f8f9fa;border-radius:12px;padding:12px 5px;
+                        text-align:center;border:1px solid #e9ecef;">
+                        <div style="color:#999;font-size:0.75rem;">🚗 {short_name}</div>
+                        <div style="color:#28a745;font-size:1.1rem;font-weight:800;white-space:nowrap;">¥0</div>
+                        <div style="color:#999;font-size:0.7rem;">返済なし</div>
+                    </div>"""
+            cards_html += '</div>'
+            st.markdown(cards_html, unsafe_allow_html=True)
 
             st.divider()
 
