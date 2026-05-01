@@ -58,7 +58,7 @@ st.markdown(f"""
         margin-bottom: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }}
     .stButton > button {{ border-radius: 10px !important; font-weight: 600; }}
 
-    .kpi-grid {{ display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px; }}
+    .kpi-grid {{ display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 20px; }}
     .kpi-card-main {{ background: linear-gradient(135deg, {PRIMARY_COLOR} 0%, {PRIMARY_LIGHT} 100%);
         border-radius: 14px; padding: 20px 12px; text-align: center; box-shadow: 0 6px 16px rgba(103,3,23,0.25); }}
     .kpi-card-main .kpi-label {{ color: rgba(255,255,255,0.9); font-size: 0.8rem; margin-bottom: 6px; }}
@@ -82,7 +82,7 @@ st.markdown(f"""
 st.markdown("""
 <div class="app-header">
     <p class="app-title">👥 部員徴収管理</p>
-    <p class="app-subtitle">遠征費などの部員からの集金をExcel風に管理します</p>
+    <p class="app-subtitle">遠征費などの部員からの集金を管理します</p>
 </div>
 """, unsafe_allow_html=True)
 
@@ -127,10 +127,6 @@ st.markdown(f"""
         <div class="kpi-label">👥 未払者</div>
         <div class="kpi-value">{unpaid_count} / {total_count} 名</div>
     </div>
-    <div class="kpi-card-sub">
-        <div class="kpi-label">📈 回収完了率</div>
-        <div class="kpi-value">{paid_rate*100:.0f}%</div>
-    </div>
 </div>
 """, unsafe_allow_html=True)
 
@@ -138,7 +134,7 @@ col_left, col_right = st.columns([2, 1], gap="large")
 
 with col_left:
     st.markdown('<div class="card">', unsafe_allow_html=True)
-    st.markdown('<p class="section-title">📊 徴収データ (Excel風入力)</p>', unsafe_allow_html=True)
+    st.markdown('<p class="section-title">📊 徴収データ</p>', unsafe_allow_html=True)
     
     if IS_ADMIN:
         with st.expander("➕ 新しい遠征（列）を追加する"):
