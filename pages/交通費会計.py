@@ -82,16 +82,28 @@ st.markdown(f"""
         padding-left: 14px; border-left: 4px solid {PRIMARY_COLOR}; margin-bottom: 18px; }}
     .card {{ background: #fff; border-radius: 16px; padding: 24px;
         margin-bottom: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }}
-    .kpi-main {{ background: linear-gradient(135deg, {PRIMARY_COLOR} 0%, {PRIMARY_LIGHT} 100%);
-        border-radius: 14px; padding: 24px 20px; text-align: center;
-        box-shadow: 0 6px 16px rgba(103,3,23,0.25); }}
-    .kpi-main .kpi-label {{ color: rgba(255,255,255,0.9); font-size: 0.85rem; margin-bottom: 6px; }}
-    .kpi-main .kpi-value {{ color: #fff; font-size: 2.4rem; font-weight: 800; }}
-    .kpi-sub {{ background: #fff; border-radius: 14px; padding: 20px; text-align: center;
-        box-shadow: 0 3px 10px rgba(0,0,0,0.06); border: 1px solid #eee; }}
-    .kpi-sub .kpi-label {{ font-size: 0.85rem; color: #666; margin-bottom: 6px; }}
-    .kpi-sub .kpi-value {{ font-size: 2rem; font-weight: 800; color: {PRIMARY_COLOR}; }}
     .stButton > button {{ border-radius: 10px !important; font-weight: 600; }}
+
+    /* KPIグリッド */
+    .kpi-grid {{
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 12px;
+        margin-bottom: 20px;
+    }}
+    .kpi-card-main {{
+        background: linear-gradient(135deg, {PRIMARY_COLOR} 0%, {PRIMARY_LIGHT} 100%);
+        border-radius: 14px; padding: 20px 12px; text-align: center;
+        box-shadow: 0 6px 16px rgba(103,3,23,0.25);
+    }}
+    .kpi-card-main .kpi-label {{ color: rgba(255,255,255,0.9); font-size: 0.8rem; margin-bottom: 6px; }}
+    .kpi-card-main .kpi-value {{ color: #fff; font-size: 1.8rem; font-weight: 800; white-space: nowrap; }}
+    .kpi-card-sub {{
+        background: #fff; border-radius: 14px; padding: 18px 10px; text-align: center;
+        box-shadow: 0 3px 10px rgba(0,0,0,0.06); border: 1px solid #eee;
+    }}
+    .kpi-card-sub .kpi-label {{ font-size: 0.8rem; color: #666; margin-bottom: 6px; }}
+    .kpi-card-sub .kpi-value {{ font-size: 1.5rem; font-weight: 800; color: {PRIMARY_COLOR}; white-space: nowrap; }}
 
     /* スマホ対応 */
     @media (max-width: 768px) {{
@@ -99,16 +111,23 @@ st.markdown(f"""
         .app-subtitle {{ font-size: 0.8rem !important; }}
         .section-title {{ font-size: 1rem !important; }}
         .card {{ padding: 14px !important; }}
-        .kpi-main .kpi-value {{ font-size: 1.6rem !important; }}
-        .kpi-sub .kpi-value {{ font-size: 1.3rem !important; }}
+        .kpi-grid {{
+            grid-template-columns: repeat(2, 1fr) !important;
+            gap: 8px !important;
+        }}
+        .kpi-card-main {{ padding: 14px 8px !important; }}
+        .kpi-card-main .kpi-value {{ font-size: 1.4rem !important; }}
+        .kpi-card-sub {{ padding: 12px 8px !important; }}
+        .kpi-card-sub .kpi-value {{ font-size: 1.15rem !important; }}
+        .kpi-card-sub .kpi-label, .kpi-card-main .kpi-label {{ font-size: 0.7rem !important; }}
         [data-testid="stMetricValue"] {{ font-size: 1.2rem !important; }}
         [data-testid="stMetricLabel"] {{ font-size: 0.7rem !important; }}
         [data-testid="stHorizontalBlock"] {{
             flex-wrap: wrap !important;
-            gap: 4px !important;
+            gap: 8px !important;
         }}
         [data-testid="column"] {{
-            min-width: 45% !important;
+            min-width: 100% !important;
         }}
         .stTabs [data-baseweb="tab-list"] {{ gap: 0px !important; }}
         .stTabs [data-baseweb="tab"] {{
@@ -173,20 +192,31 @@ if len(collection_df) > 0 and len(event_cols) > 0:
         collection_df[c] = pd.to_numeric(collection_df[c], errors='coerce').fillna(0)
     member_owed = int(collection_df[event_cols].sum().sum())
 
-# KPI表示（5列）
-k1, k2, k3, k4, k5 = st.columns(5)
-with k1:
-    st.markdown(f'<div class="kpi-main"><div class="kpi-label">💰 合計残高</div><div class="kpi-value">¥{total_balance:,}</div></div>', unsafe_allow_html=True)
-with k2:
-    st.markdown(f"""<div class="kpi-sub"><div class="kpi-label">💵 現金</div><div class="kpi-value">¥{cash_balance:,}</div></div>""", unsafe_allow_html=True)
-with k3:
-    st.markdown(f"""<div class="kpi-sub"><div class="kpi-label">📱 PayPay</div><div class="kpi-value">¥{paypay_balance:,}</div></div>""", unsafe_allow_html=True)
-with k4:
-    st.markdown(f'<div class="kpi-sub"><div class="kpi-label">🚗 ドライバー未返済</div><div class="kpi-value">¥{driver_owed:,}</div></div>', unsafe_allow_html=True)
-with k5:
-    st.markdown(f'<div class="kpi-sub"><div class="kpi-label">👥 部員未徴収</div><div class="kpi-value">¥{member_owed:,}</div></div>', unsafe_allow_html=True)
-
-st.markdown("<br>", unsafe_allow_html=True)
+# KPI表示（CSSグリッドで重なり防止）
+st.markdown(f"""
+<div class="kpi-grid">
+    <div class="kpi-card-main">
+        <div class="kpi-label">💰 合計残高</div>
+        <div class="kpi-value">¥{total_balance:,}</div>
+    </div>
+    <div class="kpi-card-sub">
+        <div class="kpi-label">💵 現金</div>
+        <div class="kpi-value">¥{cash_balance:,}</div>
+    </div>
+    <div class="kpi-card-sub">
+        <div class="kpi-label">📱 PayPay</div>
+        <div class="kpi-value">¥{paypay_balance:,}</div>
+    </div>
+    <div class="kpi-card-sub">
+        <div class="kpi-label">🚗 ドライバー未返済</div>
+        <div class="kpi-value">¥{driver_owed:,}</div>
+    </div>
+    <div class="kpi-card-sub">
+        <div class="kpi-label">👥 部員未徴収</div>
+        <div class="kpi-value">¥{member_owed:,}</div>
+    </div>
+</div>
+""", unsafe_allow_html=True)
 
 # ============================================================
 # タブ構成

@@ -158,33 +158,34 @@ st.markdown(f"""
     /* スマホ対応 */
     @media (max-width: 768px) {{
         .app-title {{
-            font-size: 1.8rem !important;
+            font-size: 1.6rem !important;
         }}
         .app-subtitle {{
-            font-size: 0.9rem !important;
+            font-size: 0.85rem !important;
         }}
         .section-title {{
-            font-size: 1.1rem !important;
+            font-size: 1rem !important;
         }}
         [data-testid="stMetricValue"] {{
-            font-size: 1.4rem !important;
+            font-size: 1.3rem !important;
         }}
         [data-testid="stMetricLabel"] {{
-            font-size: 0.75rem !important;
+            font-size: 0.7rem !important;
         }}
         [data-testid="stHorizontalBlock"] {{
             flex-wrap: wrap !important;
-            gap: 4px !important;
+            gap: 8px !important;
         }}
         [data-testid="column"] {{
-            min-width: 45% !important;
+            min-width: 100% !important;
+            flex: 1 1 100% !important;
         }}
         .stTabs [data-baseweb="tab-list"] {{
             gap: 0px !important;
         }}
         .stTabs [data-baseweb="tab"] {{
-            font-size: 0.75rem !important;
-            padding: 6px 8px !important;
+            font-size: 0.7rem !important;
+            padding: 6px 6px !important;
         }}
     }}
 </style>

@@ -113,22 +113,38 @@ st.markdown(f"""
         font-weight: 600;
     }}
 
+    /* KPIグリッド */
+    .kpi-grid {{
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 12px;
+        margin-bottom: 20px;
+    }}
+
     /* スマホ対応 */
     @media (max-width: 768px) {{
         .app-title {{ font-size: 1.5rem !important; }}
         .app-subtitle {{ font-size: 0.8rem !important; }}
         .section-title {{ font-size: 1rem !important; }}
         .card {{ padding: 14px !important; }}
-        .kpi-urgent .kpi-value {{ font-size: 1.6rem !important; }}
-        .kpi-card .kpi-value {{ font-size: 1.3rem !important; }}
+        .kpi-grid {{
+            grid-template-columns: repeat(2, 1fr) !important;
+            gap: 8px !important;
+        }}
+        .kpi-urgent {{ padding: 14px 10px !important; }}
+        .kpi-urgent .kpi-value {{ font-size: 1.4rem !important; }}
+        .kpi-card {{ padding: 14px 10px !important; }}
+        .kpi-card .kpi-value {{ font-size: 1.2rem !important; }}
+        .kpi-card .kpi-label, .kpi-urgent .kpi-label {{ font-size: 0.7rem !important; }}
         [data-testid="stMetricValue"] {{ font-size: 1.2rem !important; }}
         [data-testid="stMetricLabel"] {{ font-size: 0.7rem !important; }}
         [data-testid="stHorizontalBlock"] {{
             flex-wrap: wrap !important;
-            gap: 4px !important;
+            gap: 8px !important;
         }}
         [data-testid="column"] {{
-            min-width: 45% !important;
+            min-width: 100% !important;
+            flex: 1 1 100% !important;
         }}
         .stTabs [data-baseweb="tab-list"] {{ gap: 0px !important; }}
         .stTabs [data-baseweb="tab"] {{
@@ -181,35 +197,26 @@ else:
     pending_count = 0
     pending_people = 0
 
-col1, col2, col3, col4 = st.columns(4)
-with col1:
-    st.markdown(f"""
+st.markdown(f"""
+<div class="kpi-grid">
     <div class="kpi-urgent">
         <div class="kpi-label">💰 未返済の合計</div>
         <div class="kpi-value">¥{pending_total:,}</div>
     </div>
-    """, unsafe_allow_html=True)
-with col2:
-    st.markdown(f"""
     <div class="kpi-card">
         <div class="kpi-label">📋 未返済の件数</div>
         <div class="kpi-value">{pending_count} 件</div>
     </div>
-    """, unsafe_allow_html=True)
-with col3:
-    st.markdown(f"""
     <div class="kpi-card">
         <div class="kpi-label">👥 返済対象の人数</div>
         <div class="kpi-value">{pending_people} 人</div>
     </div>
-    """, unsafe_allow_html=True)
-with col4:
-    st.markdown(f"""
     <div class="kpi-card">
         <div class="kpi-label">✅ 返済済みの合計</div>
         <div class="kpi-value">¥{completed_total:,}</div>
     </div>
-    """, unsafe_allow_html=True)
+</div>
+""", unsafe_allow_html=True)
 
 st.markdown("<br>", unsafe_allow_html=True)
 
