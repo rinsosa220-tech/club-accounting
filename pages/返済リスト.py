@@ -9,7 +9,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # ページ設定
 st.set_page_config(
-    page_title="返済待ち | 部活動 会計管理",
+    page_title="返済リスト | 部活動 会計管理",
     page_icon="💸",
     layout="wide"
 )
@@ -112,6 +112,30 @@ st.markdown(f"""
         border-radius: 10px !important;
         font-weight: 600;
     }}
+
+    /* スマホ対応 */
+    @media (max-width: 768px) {{
+        .app-title {{ font-size: 1.5rem !important; }}
+        .app-subtitle {{ font-size: 0.8rem !important; }}
+        .section-title {{ font-size: 1rem !important; }}
+        .card {{ padding: 14px !important; }}
+        .kpi-urgent .kpi-value {{ font-size: 1.6rem !important; }}
+        .kpi-card .kpi-value {{ font-size: 1.3rem !important; }}
+        [data-testid="stMetricValue"] {{ font-size: 1.2rem !important; }}
+        [data-testid="stMetricLabel"] {{ font-size: 0.7rem !important; }}
+        [data-testid="stHorizontalBlock"] {{
+            flex-wrap: wrap !important;
+            gap: 4px !important;
+        }}
+        [data-testid="column"] {{
+            min-width: 45% !important;
+        }}
+        .stTabs [data-baseweb="tab-list"] {{ gap: 0px !important; }}
+        .stTabs [data-baseweb="tab"] {{
+            font-size: 0.7rem !important;
+            padding: 6px 6px !important;
+        }}
+    }}
 </style>
 """, unsafe_allow_html=True)
 
@@ -120,7 +144,7 @@ st.markdown(f"""
 # ======================
 st.markdown("""
 <div class="app-header">
-    <p class="app-title">💸 返済待ちリスト</p>
+    <p class="app-title">💸 返済リスト</p>
     <p class="app-subtitle">部員が立て替えたお金の返済管理</p>
 </div>
 """, unsafe_allow_html=True)
@@ -175,7 +199,7 @@ with col2:
 with col3:
     st.markdown(f"""
     <div class="kpi-card">
-        <div class="kpi-label">👥 返済待ちの人数</div>
+        <div class="kpi-label">👥 返済対象の人数</div>
         <div class="kpi-value">{pending_people} 人</div>
     </div>
     """, unsafe_allow_html=True)
@@ -459,6 +483,6 @@ with tab3:
 # フッター
 st.markdown("""
 <div style="text-align: center; padding: 24px 0 12px 0; color: #999; font-size: 0.8rem;">
-    返済待ち管理 v1.0 | 部活動 会計管理システム
+    返済リスト管理 v1.0 | 部活動 会計管理システム
 </div>
 """, unsafe_allow_html=True)

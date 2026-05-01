@@ -154,6 +154,39 @@ st.markdown(f"""
         border-radius: 10px;
         overflow: hidden;
     }}
+
+    /* スマホ対応 */
+    @media (max-width: 768px) {{
+        .app-title {{
+            font-size: 1.8rem !important;
+        }}
+        .app-subtitle {{
+            font-size: 0.9rem !important;
+        }}
+        .section-title {{
+            font-size: 1.1rem !important;
+        }}
+        [data-testid="stMetricValue"] {{
+            font-size: 1.4rem !important;
+        }}
+        [data-testid="stMetricLabel"] {{
+            font-size: 0.75rem !important;
+        }}
+        [data-testid="stHorizontalBlock"] {{
+            flex-wrap: wrap !important;
+            gap: 4px !important;
+        }}
+        [data-testid="column"] {{
+            min-width: 45% !important;
+        }}
+        .stTabs [data-baseweb="tab-list"] {{
+            gap: 0px !important;
+        }}
+        .stTabs [data-baseweb="tab"] {{
+            font-size: 0.75rem !important;
+            padding: 6px 8px !important;
+        }}
+    }}
 </style>
 """, unsafe_allow_html=True)
 
@@ -353,17 +386,26 @@ with tab1:
     if len(expense_data) > 0:
         expense_by_category = expense_data.groupby('科目')['金額'].sum().reset_index()
         
-        enji_palette = [
-            '#670317', '#8B1538', '#A52A4A', '#C04060', 
-            '#D85A7A', '#E87A9A', '#F5A0B8', '#FFD0DD',
-            '#4A0210', '#7D1A3D'
+        distinct_palette = [
+            '#670317',  # えんじ（メインカラー）
+            '#1565C0',  # ブルー
+            '#2E7D32',  # グリーン
+            '#E65100',  # オレンジ
+            '#6A1B9A',  # パープル
+            '#00838F',  # ティール
+            '#C62828',  # レッド
+            '#F9A825',  # イエロー
+            '#4527A0',  # ディープパープル
+            '#00695C',  # ダークティール
+            '#AD1457',  # ピンク
+            '#37474F',  # グレー
         ]
         
         fig = px.pie(
             expense_by_category,
             values='金額',
             names='科目',
-            color_discrete_sequence=enji_palette,
+            color_discrete_sequence=distinct_palette,
             hole=0.45
         )
         fig.update_layout(
@@ -374,18 +416,19 @@ with tab1:
             legend=dict(
                 orientation="h",
                 yanchor="bottom",
-                y=-0.15,
+                y=-0.25,
                 xanchor="center",
                 x=0.5,
-                font=dict(size=12)
+                font=dict(size=11)
             ),
-            margin=dict(t=30, b=30, l=30, r=30),
-            height=400
+            margin=dict(t=20, b=60, l=10, r=10),
+            height=420
         )
         fig.update_traces(
-            textinfo='percent+value',
-            texttemplate='%{percent}<br>¥%{value:,.0f}',
-            textfont_size=13,
+            textinfo='percent+label',
+            texttemplate='%{label}<br>%{percent}',
+            textfont_size=11,
+            textposition='outside',
             hovertemplate='<b>%{label}</b><br>金額: ¥%{value:,.0f}<br>割合: %{percent}<extra></extra>'
         )
         st.plotly_chart(fig, use_container_width=True)

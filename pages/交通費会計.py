@@ -92,6 +92,30 @@ st.markdown(f"""
     .kpi-sub .kpi-label {{ font-size: 0.85rem; color: #666; margin-bottom: 6px; }}
     .kpi-sub .kpi-value {{ font-size: 2rem; font-weight: 800; color: {PRIMARY_COLOR}; }}
     .stButton > button {{ border-radius: 10px !important; font-weight: 600; }}
+
+    /* スマホ対応 */
+    @media (max-width: 768px) {{
+        .app-title {{ font-size: 1.5rem !important; }}
+        .app-subtitle {{ font-size: 0.8rem !important; }}
+        .section-title {{ font-size: 1rem !important; }}
+        .card {{ padding: 14px !important; }}
+        .kpi-main .kpi-value {{ font-size: 1.6rem !important; }}
+        .kpi-sub .kpi-value {{ font-size: 1.3rem !important; }}
+        [data-testid="stMetricValue"] {{ font-size: 1.2rem !important; }}
+        [data-testid="stMetricLabel"] {{ font-size: 0.7rem !important; }}
+        [data-testid="stHorizontalBlock"] {{
+            flex-wrap: wrap !important;
+            gap: 4px !important;
+        }}
+        [data-testid="column"] {{
+            min-width: 45% !important;
+        }}
+        .stTabs [data-baseweb="tab-list"] {{ gap: 0px !important; }}
+        .stTabs [data-baseweb="tab"] {{
+            font-size: 0.7rem !important;
+            padding: 6px 6px !important;
+        }}
+    }}
 </style>
 """, unsafe_allow_html=True)
 
